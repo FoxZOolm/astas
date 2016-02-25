@@ -86,7 +86,7 @@ function pipes.facing(pos)
 	local meta=minetest.get_meta(pos)
 	local m=meta:get_int("pipe:faces")
 	for c,a in pairs(pipes.faces) do
-		--minetest.log("dir ".. c .. " " .. dump(a))
+		--minetest.log("dir ".. c .. " " .. debug(a))
 		local vpos={}
 		vpos.x=pos.x+a.x
 		vpos.y=pos.y+a.y
@@ -162,7 +162,7 @@ pipes:add("astas:stuff", {
 				meta:set_int("pipe:faces",m)
 				return true
 			end,
-			on_facing=function(pos_org,pos_dest) 
+			on_defacing=function(pos_org,pos_dest) 
 				--minetest.log(debug(pos_dest) .. " ask me (" .. debug(pos_org) ..") if I'm compatible with him")
 				local meta=minetest.get_meta(pos_org)
 				local m=meta:get_int("pipe:faces")
