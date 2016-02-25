@@ -149,9 +149,8 @@ pipes:add("astas:stuff", {
 		},
 		paramtype2 = "facedir",
 		groups = {dig_immediate=2},
-		after_place_node=pipes.after_place_node,
 		pipe={
-			class="test",
+			class="test", -- type of pipe (items, liquid etc)
 			--active={mode=1,timer=10},
 			on_facing=function(pos_org,pos_dest) 
 				--minetest.log(debug(pos_dest) .. " ask me (" .. debug(pos_org) ..") if I'm compatible with him")
@@ -160,15 +159,17 @@ pipes:add("astas:stuff", {
 				m=m+pipes.getdir(pos_org,pos_dest)
 				minetest.log("(".. debug(pos_org) .." faces :"..m)
 				meta:set_int("pipe:faces",m)
+				-- swap_node
 				return true
 			end,
 			on_defacing=function(pos_org,pos_dest) 
-				--minetest.log(debug(pos_dest) .. " ask me (" .. debug(pos_org) ..") if I'm compatible with him")
+				--minetest.log(debug(pos_dest) .. " ask me (" .. debug(pos_org) ..") to destruct link if case")
 				local meta=minetest.get_meta(pos_org)
 				local m=meta:get_int("pipe:faces")
 				m=m-pipes.getdir(pos_org,pos_dest)
 				minetest.log("(".. debug(pos_org) .." faces :"..m)
 				meta:set_int("pipe:faces",m)
+				-- swap_node
 				return true
 			end,
 			check_facing=function(pos_org,pos_dest) 
@@ -179,6 +180,7 @@ pipes:add("astas:stuff", {
 				minetest.log("(".. debug(pos).. ") faces ".. faces)
 				local meta=minetest.get_meta(pos)
 				meta:set_int("pipe:faces",faces)
+				-- swap_node
 			end
 		},
 	}
