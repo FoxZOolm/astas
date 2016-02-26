@@ -36,7 +36,7 @@ end
 
 function pipes.pos2dir(pos2,pos1)
 	local pos={}
-	pos.x=pos1.x-pos2.x -- vector.substruct ?
+	pos.x=pos1.x-pos2.x -- vector.substract ?
 	pos.y=pos1.y-pos2.y
 	pos.z=pos1.z-pos2.z
 	for a,b in pairs(pipes.faces) do
