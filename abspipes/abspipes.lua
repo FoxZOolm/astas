@@ -1,138 +1,112 @@
 pipes={
 	names={},
-	faces={[1]={x=-1,y=0,z=0},[2]={x=1,y=0,z=0},[4]={x=0,y=-1,z=0},[8]={x=0,y=1,z=0},[16]={x=0,y=0,z=1},[32]={x=0,y=0,z=-1}},        
+	faces={[1]={x=-1,y=0,z=0},[2]={x=1,y=0,z=0},[4]={x=0,y=-1,z=0},[8]={x=0,y=1,z=0},[16]={x=0,y=0,z=1},[32]={x=0,y=0,z=-1}},
 	propagate={msgid=0,msg={}}
 }
 
--- mode // not implented yet
---- 1 : on_timer
---- 2 : global step
---- 3 : global step force load
---- 4 : ABM (are u sure ???)
-
--- pipe prop // not implented yet
---- class:string 
---- active{mode:mode,timer:int)
-
--- pipe method
---- on_facing(pos_org,pos_dest) 
---- check_facing(pos_org,pos_dest) 
---- set_faces(pos,faces:int)
---- on_defacing(pos_org,pos_dest) 
---- after_place_node(pos, placer, itemstack, pointed_thing) // callback
---- on_destruct(pos) // callback
-
-local function debug(v)
+local function dbg(v)
 	return "x=".. v.x .." y=".. v.y .." Z=".. v.z
 end
 
+--[[- pipe event handler //minimum schematic// --
 
-function pipes.pos2dir(pos1,pos2)
-	local pos=vector.direction(pos1,pos2)        
-	for a,b in pairs(pipes.faces) do		
-		if vector.equals(b,pos) then
-			return a
-		end
-	end
-	throw()
+-- call for checking compatibility between pos_org and pos_dest
+check_pipe=function(pos_org,pos_dest)
+	return true -- todo: make a complet exemple
+end,
+
+-- call at last for visual effect
+set_faces=function(pos,faces)
+	core.swap_node(pos,{name=..faces}) -- todo: make a complet exemple
 end
+
+
+--]]--------------------------------
 
 function pipes:add(n,v)
 	self.names[n]=v.pipe
-	v.after_place_node=pipes.after_place_node
-	v.on_destruct=pipes.on_destruct
-	core.register_node(n,v)
+	--- set default ---
+	if not v.after_place_node then
+		v.after_place_node=pipes.after_place_node
+	end
+	if not v.on_dig then
+		v.on_dig=pipes.on_defacing
+	end
+	minetest.register_node(n,v)
 end
 
+--- pipes handler --- callback if overrided
 function pipes.after_place_node(pos, placer, itemstack, pointed_thing)
 	local node=core.get_node(pos)
 	local meta=core.get_meta(pos)
 	meta:set_int("pipe:faces",0)
 	local pipe=pipes.names[node.name]
-	--[[if pipe.active then
-		meta:set_int("pipe:active",pipe.active.mode)
-		meta:set_int("pipe:timer",pipe.active.timer)
-		if pipe.active.mode==1 then
-			local timer=core.get_node_timer(pos)
-			timer.start(pipe.active.timer)
-		else
-			core.log("mode not implemented yet " .. node.name)
-			throw()
-		end
-	end--]]
-	if pipe.after_place_node then -- really needed ?
-		pipe.after_place_node(pos, placer, itemstack, pointed_thing)
-	end
-	if pipe.on_facing then
-		pipes.facing(pos)
-	end
+	pipes.facing(pos)
 end
 
-function pipes.on_destruct(pos)
-	local node=core.get_node(pos)
-	local pipe=pipes.names[node.name]
+function pipes.on_dig(pos)
 	pipes.defacing(pos)
-	if pipe.on_destruct then  -- really needed ?
-		pipe.on_destruct(pos)
-	end
 end
+---------------------
 
+--- pipes internal function --- (u dont have to use it)
 function pipes.facing(pos)
 	local node=core.get_node(pos)
 	local pipe_org=pipes.names[node.name]
-	local meta=core.get_meta(pos)
-	local m=meta:get_int("pipe:faces")
-	for c,a in pairs(pipes.faces) do
+	local meta_org=core.get_meta(pos)
+	local faces_org=meta_org:get_int("pipe:faces")
+	for c,a in pairs(pipes.faces) do -- scan neightbore
 		local vpos=vector.add(pos,a)
 		local node=core.get_node(vpos)
 		local pipe=pipes.names[node.name]
-		if pipe then
-			local b=false
-			if pipe_org.on_facing then
-				b=pipe_org.check_facing(pos,vpos)
-				if b==true and pipe.on_facing then
-					if pipe.on_facing(vpos,pos) then
-						m=bit.bor(m,c)
-					end
-				end
+		if pipe then -- for pipe
+			if pipe_org.on_check_pipe(pos,vpos) or pipe.on_check_pipe(vpos,pos) then
+				local meta_dest=core.get_meta(vpos)
+				local faces_dest=meta_dest:get_int("pipe:faces")
+				local dir=pipes.pos2dir(vpos,pos)				
+				faces_dest=bit.bor(faces_dest,dir)
+				pipe.set_faces(vpos,faces_dest) 
+				meta_dest:set_int("pipe:faces",faces_dest)				
+				faces_org=bit.bor(faces_org,c)				
 			end
 		end
 	end
-	if pipe_org.set_faces then 
-		pipe_org.set_faces(pos,m)
-	end
+	pipe_org.set_faces(pos,faces_org)
+	meta_org:set_int("pipe:faces",faces_org)
 end
 
 function pipes.defacing(pos)
-	local node=core.get_node(pos)
-	local pipe_org=pipes.names[node.name]
-	local meta=core.get_meta(pos)
-	for c,a in pairs(pipes.faces) do
-		local vpos=vector.add(vpos,a)
-		local node=core.get_node(vpos)
+	local gates=pipes.get_gates(pos)
+	for _,a in pairs(gates) do
+		local node=core.get_node(a.pos)
 		local pipe=pipes.names[node.name]
-		if pipe then
-			local b=false
-			if pipe_org.on_facing then
-				b=pipe_org.check_facing(pos,vpos)
-				if b==true and pipe.on_defacing then
-					pipe.on_defacing(vpos,pos)
-				end
-			end
-		end
+		local meta=core.get_meta(a.pos)
+		local faces=meta:get_int("pipe:faces")
+		faces=faces-dir														 -- todo: use bit
+		pipe.set_faces(pos_org,faces)
 	end
 end
+-------------------------------
 
--- untested --
+--- Pipes public function ---
+function pipes.pos2dir(pos1,pos2) -- return face (in abspipes type)
+	local pos=vector.direction(pos1,pos2)
+	for a,b in pairs(pipes.faces) do
+		if vector.equals(b,pos) then
+			return a
+		end
+	end
+	throw() -- what ???
+end
 
-function pipes.get_gates(pos,from) -- return list of node pointer by faces except from "from" (can be nil)
+function pipes.get_gates(pos,from) -- return list of node pointed by faces except from "from" (can be nil)
 	local meta=core.get_meta(pos)
 	local faces=meta:get_int("pipe:faces")
 	local nodes={}
 	for a,b in pairs(pipes.faces) do
 		if bit.band(a,faces)==a then
 			local vpos=vector.add(pos,pipes.faces[a])
-			if not from or not vector.equals(vpos,from) then 
+			if not from or not vector.equals(vpos,from) then
 				table.insert(nodes,vpos)
 			end
 		end
@@ -140,116 +114,91 @@ function pipes.get_gates(pos,from) -- return list of node pointer by faces excep
 	return nodes
 end
 
---- message
--- id (time ?)
--- org (pos of 1st)
 
--- on thinking --
-
-function pipes.propagate:new(from,pos,mesg)   
-    --core.log("astas:prop:new")
-    self.msgid=self.msgid+1
-    local id=self.msgid
-    local hash=core.hash_node_position(pos)
-    local msg={id=id,org=from,msg=mesg,path={},queue={}}
-    msg.queue[hash]=from
-    --core.log(dump(msg))
-    self.msg[id]=msg
+--- Pipes propagate public function ---
+function pipes.propagate:new(from,pos,mesg) -- make a new message
+	--core.log("astas:prop:new")
+	self.msgid=self.msgid+1
+	local id=self.msgid
+	local hash=core.hash_node_position(pos)
+	local msg={id=id,org=from,msg=mesg,path={},queue={}}
+	msg.queue[hash]=from
+	--core.log(dump(msg))
+	self.msg[id]=msg
 end
 
-function pipes.propagateloop()    
-    local maxloop=10000
-    for a,b in pairs(pipes.propagate.msg) do
-        local nb=0
-        for c,d in pairs(b.queue) do
-            local pos=core.get_position_from_hash(c)
-            local node=core.get_node(pos)
-            local pipe=pipes.names[node.name]
-            nb=nb+1
-            maxloop=maxloop-1
-            if maxloop==0 then
-                break
-            end
-            table.insert(b.path,c)
-            pipe.on_propagate(pos,d,b)            
-            b.queue[c]=nil -- table.delete ?
-        end
-        if nb==0 then
-            b[a]=nil -- destroy msg
-        end
-        if maxloop==0 then
-            break
-        end
-    end    
-    core.after(1,pipes.propagateloop)   
+function pipes.propagate:push(from,pos,msg) -- push msg to other (neighbore)
+	local hash=minetest.hash_node_position(pos)
+	if msg.path[hash] then
+		return false
+	end
+	if msg.queue[hash] then
+		return false
+	end
+	msg.queue[hash]=from
+	return true
 end
+---------------------------------------
 
-core.after(1,pipes.propagateloop)
+--- Pipes GLOBAL ---
+minetest.register_globalstep(function(delta)
+	local maxloop=100
+	local msgnb=0
+	for a,b in pairs(pipes.propagate.msg) do
+		msgnb=msgnb+1
+		local nb=0
+		for c,d in pairs(b.queue) do
+			local pos=core.get_position_from_hash(c)
+			local node=core.get_node(pos)
+			local pipe=pipes.names[node.name]
+			nb=nb+1
+			maxloop=maxloop-1
+			if maxloop==0 then
+				break
+			end
+			b.path[c]=d
+			pipe.on_propagate(pos,d,b)
+			b.queue[c]=nil -- table.delete ?
+		end
+		if nb==0 then
+			b[a]=nil -- destroy msg
+		end
+		if maxloop==0 then
+			break
+		end
+	end
+	if msgnb==0 then 
+		pipes.propagate.msgid=0
+	end
+end)
+--------------------
 
-function pipes.propagate:push(from,pos,msg)
-    local hash=minetest.hash_node_position(pos)
-    if msg.path[hash] or msg.queue[hash] then 
-        return false
-    end
-    msg.queue[hash]=from
-    return true
-end
 -- test --
 
 pipes:add("astas:stuff", {
 	description = "stuff",
-		tiles = {
-			"bones_top.png",
-			"bones_bottom.png",
-			"bones_side.png",
-			"bones_side.png",
-			"bones_rear.png",
-			"bones_front.png"
-		},
-		paramtype2 = "facedir",
-		groups = {dig_immediate=2},
-                on_punch=function (pos)
-                        local msg="totor"
-                        pipes.propagate:new(pos,pos,msg)
-                end,
-		pipe={
-			class="test", -- type of pipe (items, liquid etc)
-			--active={mode=1,timer=10},
-			on_facing=function(pos_org,pos_dest) 				
-				local meta=core.get_meta(pos_org)
-				local m=meta:get_int("pipe:faces")
-				m=bit.bor(m,pipes.pos2dir(pos_org,pos_dest))
-				--core.log("astas.pipe.facing (".. debug(pos_org) .." faces :"..m)
-				meta:set_int("pipe:faces",m)
-				-- swap_node
-				return true
-			end,
-			on_propagate=function (pos,from,msg)
-				core.log("astas:on_prop:" .. debug(pos).. " from:".. debug(from))
-                                local gates=pipes.get_gates(pos,from)
-                                for a,b in pairs(gates) do
-                                    pipes.propagate:push(pos,b,msg)
-                                end
-			end,
-			on_defacing=function(pos_org,pos_dest) 
-				--core.log(debug(pos_dest) .. " ask me (" .. debug(pos_org) ..") to destruct link if case")
-				local meta=core.get_meta(pos_org)
-				local m=meta:get_int("pipe:faces")
-				m=m-pipes.pos2dir(pos_org,pos_dest) -- bit.? 
-				meta:set_int("pipe:faces",m)
-				-- swap_node
-				return true
-			end,
-			check_facing=function(pos_org,pos_dest) 
-				-- core.log("me (".. debug(pos_org) .. ") check if ".. debug(pos_dest) .." is compatible")
-				return true
-			end,
-			set_faces=function(pos,faces)
-				--core.log("astas:pipe.set_face (".. debug(pos).. ") faces ".. faces)
-				local meta=core.get_meta(pos)
-				meta:set_int("pipe:faces",faces)
-				-- swap_node
+	tiles = {"bones_top.png","bones_bottom.png","bones_side.png","bones_side.png","bones_rear.png",	"bones_front.png"	},
+	paramtype2 = "facedir",
+	groups = {dig_immediate=2},
+	on_punch=function (pos)
+		local msg="totor"
+		pipes.propagate:new(pos,pos,msg)
+	end,
+	pipe={
+		on_check_pipe=function(pos_org,pos_dest)
+			return true
+		end,
+		set_faces=function(pos,faces)
+			core.log("abspipes:pipe.set_faces:"..dbg(pos).." faces:"..faces)
+			return true
+		end,
+		on_propagate=function (pos,from,msg)
+			core.log("abspipes.pipe:on_prop:" .. dbg(pos).. " from:".. dbg(from))
+			local gates=pipes.get_gates(pos,from)
+			for a,b in pairs(gates) do
+				core.log("push:"..dbg(pos))
+				pipes.propagate:push(pos,b,msg)
 			end
-		},
-	}
-)
+		end,
+	},
+})
