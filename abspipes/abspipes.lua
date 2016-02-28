@@ -8,10 +8,10 @@ local function dbg(v)
 	return "x=".. v.x .." y=".. v.y .." Z=".. v.z
 end
 
---[[- pipe event handler //minimum schematic// --
+--[[- pipe event handler --
 
 -- call for checking compatibility between pos_org and pos_dest
-check_pipe=function(pos_org,pos_dest)
+on_check_pipe=function(pos_org,pos_dest)
 	return true -- todo: make a complet exemple
 end,
 
@@ -20,41 +20,15 @@ set_faces=function(pos,faces)
 	core.swap_node(pos,{name=..faces}) -- todo: make a complet exemple
 end
 
-
 --]]--------------------------------
 
-function pipes:add(n,v)
-	self.names[n]=v.pipe
-	--- set default ---
-	if not v.after_place_node then
-		v.after_place_node=pipes.after_place_node
-	end
-	if not v.on_dig then
-		v.on_dig=pipes.on_defacing
-	end
-	minetest.register_node(n,v)
-end
-
 --- pipes handler --- callback if overrided
-function pipes.after_place_node(pos, placer, itemstack, pointed_thing)
-	local node=core.get_node(pos)
-	local meta=core.get_meta(pos)
-	meta:set_int("pipe:faces",0)
-	local pipe=pipes.names[node.name]
-	pipes.facing(pos)
-end
-
-function pipes.on_dig(pos)
-	pipes.defacing(pos)
-end
----------------------
-
---- pipes internal function --- (u dont have to use it)
-function pipes.facing(pos)
+function pipes.on_construct(pos)
 	local node=core.get_node(pos)
 	local pipe_org=pipes.names[node.name]
 	local meta_org=core.get_meta(pos)
-	local faces_org=meta_org:get_int("pipe:faces")
+	local faces_org=0
+	meta_org:set_int("pipe:faces",0)
 	for c,a in pairs(pipes.faces) do -- scan neightbore
 		local vpos=vector.add(pos,a)
 		local node=core.get_node(vpos)
@@ -75,20 +49,74 @@ function pipes.facing(pos)
 	meta_org:set_int("pipe:faces",faces_org)
 end
 
-function pipes.defacing(pos)
-	local gates=pipes.get_gates(pos)
-	for _,a in pairs(gates) do
-		local node=core.get_node(a.pos)
+function pipes.on_destruct(pos1)
+	local gates=pipes.get_gates(pos1)	
+	for _,pos2 in pairs(gates) do
+		local node=core.get_node(pos2)
 		local pipe=pipes.names[node.name]
-		local meta=core.get_meta(a.pos)
+		local dir=pipes.pos2dir(pos2,pos1)
+		local meta=core.get_meta(pos2)
 		local faces=meta:get_int("pipe:faces")
-		faces=faces-dir														 -- todo: use bit
-		pipe.set_faces(pos_org,faces)
-	end
+		dir=bit.bxor(dir,255)
+		faces=bit.band(faces,dir)		
+		pipe.set_faces(pos2,faces)
+		meta:set_int("pipe:faces",faces)
+	end	
 end
 -------------------------------
 
+
 --- Pipes public function ---
+
+function pipes:add(n,v) -- add your own pipe (instead register_node)
+	self.names[n]=v.pipe
+	--- set default ---
+	if not v.on_construct then
+		v.on_construct=pipes.on_construct
+	end
+	if not v.on_destruct then
+		v.on_destruct=pipes.on_destruct
+	end
+	minetest.register_node(n,v)
+end
+
+function pipes.connect(pos1,pos2) 
+	local node=core.get_node(pos1)
+	local pipe=pipes.names[node.name]
+	local dir=pipes.pos2dir(pos1,pos2)
+	local meta=core.get_meta(pos1)
+	local faces=bit.bor(meta:get_int("pipe:faces"),dir)
+	pipe.set_faces(pos1,dir)
+
+	local node=core.get_node(pos2)
+	local pipe=pipes.names[node.name]
+	local dir=pipes.pos2dir(pos2,pos1)
+	local meta=core.get_meta(pos2)
+	local faces=bit.bor(meta:get_int("pipe:faces"),dir)
+	pipe.set_faces(pos2,dir)
+end
+
+function pipes.disconnect(pos1,pos2)
+	local node=core.get_node(pos1)
+	local pipe=pipes.names[node.name]
+	local dir=pipes.pos2dir(pos1,pos2)
+	local meta=core.get_meta(pos1)
+	local faces=meta:get_int("pipe:faces")
+	dir=bit.bxor(dir,255)
+	faces=bit.band(faces,dir)		
+	pipe.set_faces(pos1,dir)
+
+	local node=core.get_node(pos2)
+	local pipe=pipes.names[node.name]
+	local dir=pipes.pos2dir(pos2,pos1)
+	local meta=core.get_meta(pos2)
+	local faces=meta:get_int("pipe:faces")
+	dir=bit.bxor(dir,255)
+	faces=bit.band(faces,dir)		
+	pipe.set_faces(pos2,dir)
+end
+
+
 function pipes.pos2dir(pos1,pos2) -- return face (in abspipes type)
 	local pos=vector.direction(pos1,pos2)
 	for a,b in pairs(pipes.faces) do
@@ -117,13 +145,11 @@ end
 
 --- Pipes propagate public function ---
 function pipes.propagate:new(from,pos,mesg) -- make a new message
-	--core.log("astas:prop:new")
 	self.msgid=self.msgid+1
 	local id=self.msgid
 	local hash=core.hash_node_position(pos)
 	local msg={id=id,org=from,msg=mesg,path={},queue={}}
 	msg.queue[hash]=from
-	--core.log(dump(msg))
 	self.msg[id]=msg
 end
 
