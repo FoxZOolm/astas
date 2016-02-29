@@ -1,26 +1,37 @@
 pipes={
 	names={},
 	faces={[1]={x=-1,y=0,z=0},[2]={x=1,y=0,z=0},[4]={x=0,y=-1,z=0},[8]={x=0,y=1,z=0},[16]={x=0,y=0,z=1},[32]={x=0,y=0,z=-1}},
-	propagate={msgid=0,msg={}}
+	propagate={msgid=0,msg={}},
+	actives={}
 }
 
 local function dbg(v)
 	return "x=".. v.x .." y=".. v.y .." Z=".. v.z
 end
 
+--[[- Hnd structure ---
+	timer <--- time in MTformat 
+	delta <--- delta time 
+	data  <--- dodafkuw 
+	pipe  <--- pipe event handler
+--]]-------------------
+
+--[[- message structure --- (dont touch it)
+	id    <--- id of message 
+	org   <--- pos of node org
+	msg   <--- msg 
+	path  <--- list of node who receive message
+	queue <--- list of node who wait message 
+--]]-----------------------
+
 --[[- pipe event handler --
-
--- call for checking compatibility between pos_org and pos_dest
 on_check_pipe=function(pos_org,pos_dest)
-	return true -- todo: make a complet exemple
-end,
-
--- call at last for visual effect
 set_faces=function(pos,faces)
-	core.swap_node(pos,{name=..faces}) -- todo: make a complet exemple
-end
-
---]]--------------------------------
+on_activation=function(pos,hnd,data)
+active.init=function(pos,hnd,data)
+on_propagate(pos,from,message)
+--]]-----------------------
+ 
 
 --- pipes handler --- callback if overrided
 function pipes.on_construct(pos)
@@ -47,9 +58,23 @@ function pipes.on_construct(pos)
 	end
 	pipe_org.set_faces(pos,faces_org)
 	meta_org:set_int("pipe:faces",faces_org)
+	if pipe_org.active then
+		local hash=core.hash_node_position(pos)
+		pipes.actives[hash]={pipe=pipe,timer=pipe.active.timer,delta=0,data={}}
+		if pipe_org.active.init then
+			pipe_org.active.init(pos,pipes.actives[hash])
+		end
+	end
 end
 
 function pipes.on_destruct(pos1)
+	local node=core.get_node(pos1)
+	local pipe=pipes.names[node.name]
+	if pipe.active then
+		local hash=core.hash_node_position(pos)
+		pipes.actives[hash]=nil
+	end
+
 	local gates=pipes.get_gates(pos1)	
 	for _,pos2 in pairs(gates) do
 		local node=core.get_node(pos2)
@@ -116,15 +141,14 @@ function pipes.disconnect(pos1,pos2)
 	pipe.set_faces(pos2,dir)
 end
 
-
-function pipes.pos2dir(pos1,pos2) -- return face (in abspipes type)
-	local pos=vector.direction(pos1,pos2)
+function pipes.pos2dir(pos1,pos2) -- return faces from pos1 to pos2 (in abspipes.faces type)
+	local pos=vector.direction(pos1,pos2) -- vector.substract ?
 	for a,b in pairs(pipes.faces) do
 		if vector.equals(b,pos) then
 			return a
 		end
 	end
-	throw() -- what ???
+	throw() -- (pos1 and pos2 must be side to side)
 end
 
 function pipes.get_gates(pos,from) -- return list of node pointed by faces except from "from" (can be nil)
@@ -167,7 +191,7 @@ end
 ---------------------------------------
 
 --- Pipes GLOBAL ---
-minetest.register_globalstep(function(delta)
+minetest.register_globalstep(function(delta) -- background propagate message loop
 	local maxloop=100
 	local msgnb=0
 	for a,b in pairs(pipes.propagate.msg) do
@@ -197,7 +221,26 @@ minetest.register_globalstep(function(delta)
 		pipes.propagate.msgid=0
 	end
 end)
+
+minetest.register_globalstep(function(delta) -- background activation loop
+	local maxloop=100
+	for a in pairs(pipes.actives) do
+		if a.timer>0 then
+			a.delta=a.delta-delta
+			if a.delta<=0 then
+				maxloop=maxloop-1
+				local pos=minetest.hash_node_position(a)
+				a.pipe.on_activation(pos,a,a.data)
+				if maxloop==0 then 
+					break
+				end
+				a.delta=a.timer
+			end
+		end
+	end
+end)
 --------------------
+
 
 -- test --
 
@@ -207,18 +250,26 @@ pipes:add("astas:stuff", {
 	paramtype2 = "facedir",
 	groups = {dig_immediate=2},
 	on_punch=function (pos)
-		local msg="totor"
-		pipes.propagate:new(pos,pos,msg)
+		local msg="mymessage" -- can be {..dafkuw..}
+		pipes.propagate:new(pos,pos,msg) -- push message to global loop
 	end,
 	pipe={
+		active={
+			timer=10,
+			init=function(pos,hnd,data)
+			end
+		},
+		on_activation=function(pos,hnd,data)
+		-- forceload(pos) if u need touch it
+		end,
 		on_check_pipe=function(pos_org,pos_dest)
-			return true
+			return true -- todo: a complete exemple
 		end,
 		set_faces=function(pos,faces)
 			core.log("abspipes:pipe.set_faces:"..dbg(pos).." faces:"..faces)
 			return true
 		end,
-		on_propagate=function (pos,from,msg)
+		on_propagate=function (pos,from,msg)			
 			core.log("abspipes.pipe:on_prop:" .. dbg(pos).. " from:".. dbg(from))
 			local gates=pipes.get_gates(pos,from)
 			for a,b in pairs(gates) do
