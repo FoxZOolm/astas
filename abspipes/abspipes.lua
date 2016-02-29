@@ -10,18 +10,18 @@ local function dbg(v)
 end
 
 --[[- Hnd structure ---
-	timer <--- time in MTformat 
-	delta <--- delta time 
-	data  <--- dodafkuw 
+	timer <--- time in MTformat
+	delta <--- delta time
+	data  <--- dodafkuw
 	pipe  <--- pipe event handler
 --]]-------------------
 
 --[[- message structure --- (dont touch it)
-	id    <--- id of message 
+	id    <--- id of message
 	org   <--- pos of node org
-	msg   <--- msg 
+	msg   <--- msg
 	path  <--- list of node who receive message
-	queue <--- list of node who wait message 
+	queue <--- list of node who wait message
 --]]-----------------------
 
 --[[- pipe event handler --
@@ -31,7 +31,7 @@ on_activation=function(pos,hnd,data)
 active.init=function(pos,hnd,data)
 on_propagate(pos,from,message)
 --]]-----------------------
- 
+
 
 --- pipes handler --- callback if overrided
 function pipes.on_construct(pos)
@@ -48,11 +48,11 @@ function pipes.on_construct(pos)
 			if pipe_org.on_check_pipe(pos,vpos) or pipe.on_check_pipe(vpos,pos) then
 				local meta_dest=core.get_meta(vpos)
 				local faces_dest=meta_dest:get_int("pipe:faces")
-				local dir=pipes.pos2dir(vpos,pos)				
+				local dir=pipes.pos2dir(vpos,pos)
 				faces_dest=bit.bor(faces_dest,dir)
-				pipe.set_faces(vpos,faces_dest) 
-				meta_dest:set_int("pipe:faces",faces_dest)				
-				faces_org=bit.bor(faces_org,c)				
+				pipe.set_faces(vpos,faces_dest)
+				meta_dest:set_int("pipe:faces",faces_dest)
+				faces_org=bit.bor(faces_org,c)
 			end
 		end
 	end
@@ -75,7 +75,7 @@ function pipes.on_destruct(pos1)
 		pipes.actives[hash]=nil
 	end
 
-	local gates=pipes.get_gates(pos1)	
+	local gates=pipes.get_gates(pos1)
 	for _,pos2 in pairs(gates) do
 		local node=core.get_node(pos2)
 		local pipe=pipes.names[node.name]
@@ -83,16 +83,14 @@ function pipes.on_destruct(pos1)
 		local meta=core.get_meta(pos2)
 		local faces=meta:get_int("pipe:faces")
 		dir=bit.bxor(dir,255)
-		faces=bit.band(faces,dir)		
+		faces=bit.band(faces,dir)
 		pipe.set_faces(pos2,faces)
 		meta:set_int("pipe:faces",faces)
-	end	
+	end
 end
 -------------------------------
 
-
 --- Pipes public function ---
-
 function pipes:add(n,v) -- add your own pipe (instead register_node)
 	self.names[n]=v.pipe
 	--- set default ---
@@ -103,42 +101,6 @@ function pipes:add(n,v) -- add your own pipe (instead register_node)
 		v.on_destruct=pipes.on_destruct
 	end
 	minetest.register_node(n,v)
-end
-
-function pipes.connect(pos1,pos2) 
-	local node=core.get_node(pos1)
-	local pipe=pipes.names[node.name]
-	local dir=pipes.pos2dir(pos1,pos2)
-	local meta=core.get_meta(pos1)
-	local faces=bit.bor(meta:get_int("pipe:faces"),dir)
-	pipe.set_faces(pos1,dir)
-
-	local node=core.get_node(pos2)
-	local pipe=pipes.names[node.name]
-	local dir=pipes.pos2dir(pos2,pos1)
-	local meta=core.get_meta(pos2)
-	local faces=bit.bor(meta:get_int("pipe:faces"),dir)
-	pipe.set_faces(pos2,dir)
-end
-
-function pipes.disconnect(pos1,pos2)
-	local node=core.get_node(pos1)
-	local pipe=pipes.names[node.name]
-	local dir=pipes.pos2dir(pos1,pos2)
-	local meta=core.get_meta(pos1)
-	local faces=meta:get_int("pipe:faces")
-	dir=bit.bxor(dir,255)
-	faces=bit.band(faces,dir)		
-	pipe.set_faces(pos1,dir)
-
-	local node=core.get_node(pos2)
-	local pipe=pipes.names[node.name]
-	local dir=pipes.pos2dir(pos2,pos1)
-	local meta=core.get_meta(pos2)
-	local faces=meta:get_int("pipe:faces")
-	dir=bit.bxor(dir,255)
-	faces=bit.band(faces,dir)		
-	pipe.set_faces(pos2,dir)
 end
 
 function pipes.pos2dir(pos1,pos2) -- return faces from pos1 to pos2 (in abspipes.faces type)
@@ -196,9 +158,10 @@ minetest.register_globalstep(function(delta) -- background propagate message loo
 	local msgnb=0
 	for a,b in pairs(pipes.propagate.msg) do
 		msgnb=msgnb+1
-		local nb=0
+		local nb=0		
 		for c,d in pairs(b.queue) do
 			local pos=core.get_position_from_hash(c)
+			core.emerge_area(pos,pos)
 			local node=core.get_node(pos)
 			local pipe=pipes.names[node.name]
 			nb=nb+1
@@ -217,7 +180,7 @@ minetest.register_globalstep(function(delta) -- background propagate message loo
 			break
 		end
 	end
-	if msgnb==0 then 
+	if msgnb==0 then
 		pipes.propagate.msgid=0
 	end
 end)
@@ -231,7 +194,7 @@ minetest.register_globalstep(function(delta) -- background activation loop
 				maxloop=maxloop-1
 				local pos=minetest.hash_node_position(a)
 				a.pipe.on_activation(pos,a,a.data)
-				if maxloop==0 then 
+				if maxloop==0 then
 					break
 				end
 				a.delta=a.timer
@@ -240,6 +203,78 @@ minetest.register_globalstep(function(delta) -- background activation loop
 	end
 end)
 --------------------
+
+
+--- modders helper ---
+function pipes.connect(pos1,pos2)
+	local node=core.get_node(pos1)
+	local pipe=pipes.names[node.name]
+	local dir=pipes.pos2dir(pos1,pos2)
+	local meta=core.get_meta(pos1)
+	local faces=bit.bor(meta:get_int("pipe:faces"),dir)
+	pipe.set_faces(pos1,dir)
+
+	local node=core.get_node(pos2)
+	local pipe=pipes.names[node.name]
+	local dir=pipes.pos2dir(pos2,pos1)
+	local meta=core.get_meta(pos2)
+	local faces=bit.bor(meta:get_int("pipe:faces"),dir)
+	pipe.set_faces(pos2,dir)
+end
+
+function pipes.disconnect(pos1,pos2)
+	local node=core.get_node(pos1)
+	local pipe=pipes.names[node.name]
+	local dir=pipes.pos2dir(pos1,pos2)
+	local meta=core.get_meta(pos1)
+	local faces=meta:get_int("pipe:faces")
+	dir=bit.bxor(dir,255)
+	faces=bit.band(faces,dir)
+	pipe.set_faces(pos1,dir)
+
+	local node=core.get_node(pos2)
+	local pipe=pipes.names[node.name]
+	local dir=pipes.pos2dir(pos2,pos1)
+	local meta=core.get_meta(pos2)
+	local faces=meta:get_int("pipe:faces")
+	dir=bit.bxor(dir,255)
+	faces=bit.band(faces,dir)
+	pipe.set_faces(pos2,dir)
+end
+
+function pipes.get_activation_hnd(pos)
+	return pipes.actives[core.hash_node_position(pos)]
+end
+
+pipes.helper={compatible_pipes={}}
+function pipes.helper.compatible_pipes:set(cl1,cl2)
+	table.insert(self,cl1 .. "=".. cl2)
+	table.insert(self,cl2 .. "=".. cl1)
+end
+
+function pipes.helper.compatible_pipes:is(pos1,pos2)
+	local node=core.get_node(pos1)
+	local class1=pipes.names[node.name].class
+	local node=core.get_node(pos2)
+	local class2=pipes.names[node.name].class
+	if class1==class2 then 
+		return true
+	end
+    local compatible=class1.."="..class2
+	return self[compatible] or false	
+end
+
+function pipes.helper.prepare_swap(pos,faces,extra) -- return new node name#faces_extra
+	local name=core.get_node(pos).name	
+	local rawname=string.split(name,"#")[1]
+	if not extra then 
+		extra=""
+	else
+		extra="_" .. extra
+	end
+	return rawname .. "#" .. faces .. extra
+end
+----------------------
 
 
 -- test --
@@ -254,22 +289,25 @@ pipes:add("astas:stuff", {
 		pipes.propagate:new(pos,pos,msg) -- push message to global loop
 	end,
 	pipe={
+		class="abspipes:test", -- modname:<your pipe type name>
 		active={
 			timer=10,
 			init=function(pos,hnd,data)
 			end
 		},
 		on_activation=function(pos,hnd,data)
-		-- forceload(pos) if u need touch it
+		-- core.emerge_area(pos, pos) if u want touch it
 		end,
 		on_check_pipe=function(pos_org,pos_dest)
-			return true -- todo: a complete exemple
+			return pipes.helper.compatible_pipe:is(pos_org,pos_dest)
 		end,
 		set_faces=function(pos,faces)
 			core.log("abspipes:pipe.set_faces:"..dbg(pos).." faces:"..faces)
+			local n=pipes.prepare_swap(pos,faces)
+			-- core.swap_node(pos,n)
 			return true
 		end,
-		on_propagate=function (pos,from,msg)			
+		on_propagate=function (pos,from,msg)
 			core.log("abspipes.pipe:on_prop:" .. dbg(pos).. " from:".. dbg(from))
 			local gates=pipes.get_gates(pos,from)
 			for a,b in pairs(gates) do

@@ -14,8 +14,8 @@ AbsPipes :
  - logical connection [finished]
  - propagation [finished]   
  - activation [finished]        
- - forceload on propagation loop [WIP]
- - helper
+ - emerge node [untested]
+ - helper [partiel]    
  - wrapper (pipeworks interface) [if asked]
   
 from AE2 : (huge job) 
@@ -57,4 +57,8 @@ from GT5u : (medium job)
    - quarry (node+liquid)
    - tools (drill, laserminer, portable pump)   
    
-   Like I think my mods, no one machine need mesecon or pipeworks (or other)  
+from OC : (intermediat job)
+---------
+	- robot
+   
+Like I think my mods, no one machine need mesecon or pipeworks (or other)  
