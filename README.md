@@ -14,13 +14,14 @@ AbsPipes :
  - logical connection [finished]
  - propagation [finished]   
  - activation [finished]        
- - emerge node [untested]
+ - emerge node on propagation [untested]
  - helper [partiel]    
  - wrapper (pipeworks interface) [if asked]
-  
+
+     
 from AE2 : (huge job)    
 ----------   
-  - ME Cable [on fire]
+  - ME Cable [WIP]
   - ME Controler  (crafting terminal inclued)     
   - ME Driver     
   - ME Drive (items, liquids, nrj)    
@@ -28,7 +29,8 @@ from AE2 : (huge job)
   - ME Molecular assembler (aka autocrafter)   
   - ME LuaControler (like ligth OC)   
   - ...   
-     
+
+         
 from GT5u : (medium job)     
 -----------     
    - steam generator (coal, lava, hot coolant, oil)    
@@ -46,7 +48,7 @@ from GT5u : (medium job)
    - chimical bath    
    - blast furnace (coal, coke, electric)      
    - explosion chamber   
-   - chimical reactor  
+   - chemical reactor  
    - oil liquid (mapgened liquid)    
    - oil processing    
    - liquid pump    
@@ -62,3 +64,6 @@ from OC : (intermediat job)
 	- robot    
    
 Like I think my mods, no one machine need mesecon or pipeworks (or other)  
+
+Changelog :
+2016/03/01-21:47 pipes .on_check_pipe, .on_propagate & .set_faces default handler    

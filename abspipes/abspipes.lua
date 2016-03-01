@@ -100,6 +100,12 @@ function pipes:add(n,v) -- add your own pipe (instead register_node)
 	if not v.on_destruct then
 		v.on_destruct=pipes.on_destruct
 	end
+        if not v.on_check_pipes then
+            v.on_check_pipes=pipes.on_check_pipes
+        end
+        if not v.on_propagate then
+            v.on_propagate=pipes.on_propagate
+        end
 	minetest.register_node(n,v)
 end
 
@@ -128,6 +134,20 @@ function pipes.get_gates(pos,from) -- return list of node pointed by faces excep
 	return nodes
 end
 
+--- Pipes default Handler --- (dont need to callback)
+
+function pipes.on_check.pipes(pos_org,pos_dest)
+    return pipes.helper.compatible_pipe:is(pos_org,pos_dest)
+end
+
+function pipes.on_propagate=function (pos,from,msg)
+    local gates=pipes.get_gates(pos,from)
+    for a,b in pairs(gates) do
+        pipes.propagate:push(pos,b,msg)
+    end
+end
+
+-----------------------------
 
 --- Pipes propagate public function ---
 function pipes.propagate:new(from,pos,mesg) -- make a new message
@@ -298,22 +318,11 @@ pipes:add("astas:stuff", {
 		on_activation=function(pos,hnd,data)
 		-- core.emerge_area(pos, pos) if u want touch it
 		end,
-		on_check_pipe=function(pos_org,pos_dest)
-			return pipes.helper.compatible_pipe:is(pos_org,pos_dest)
-		end,
 		set_faces=function(pos,faces)
 			core.log("abspipes:pipe.set_faces:"..dbg(pos).." faces:"..faces)
 			local n=pipes.prepare_swap(pos,faces)
 			-- core.swap_node(pos,n)
 			return true
-		end,
-		on_propagate=function (pos,from,msg)
-			core.log("abspipes.pipe:on_prop:" .. dbg(pos).. " from:".. dbg(from))
-			local gates=pipes.get_gates(pos,from)
-			for a,b in pairs(gates) do
-				core.log("push:"..dbg(pos))
-				pipes.propagate:push(pos,b,msg)
-			end
 		end,
 	},
 })
