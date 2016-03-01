@@ -10,7 +10,7 @@ ligth port minecraft mods like AE2, IC2/GregTech5u, etc to MT.
 
 
 AbsPipes :    
-----------
+----------   
  - logical connection [finished]
  - propagation [finished]   
  - activation [finished]        
@@ -18,10 +18,10 @@ AbsPipes :
  - helper [partiel]    
  - wrapper (pipeworks interface) [if asked]
   
-from AE2 : (huge job) 
-----------
+from AE2 : (huge job)    
+----------   
   - ME Cable [on fire]
-  - ME Controler (crafting terminal inclued)     
+  - ME Controler  (crafting terminal inclued)     
   - ME Driver     
   - ME Drive (items, liquids, nrj)    
   - ME Interface   
@@ -30,35 +30,35 @@ from AE2 : (huge job)
   - ...   
      
 from GT5u : (medium job)     
------------
-   - steam generator (coal, lava, hot coolant, oil)
-   - turbine (steam, super steam)
-   - electic cable
-   - liquid pipe 
-   - elecric furnace
-   - macerator
-   - washing machine
-   - extractor
-   - compressor   
-   - centrifuge
-   - circuit printer (inscriber)
-   - thermal centrifuge
-   - chimical bath
+-----------     
+   - steam generator (coal, lava, hot coolant, oil)    
+   - turbine (steam, super steam)    
+   - electic cable    
+   - liquid pipe     
+   - elecric furnace    
+   - macerator    
+   - washing machine    
+   - extractor    
+   - compressor      
+   - centrifuge    
+   - circuit printer (inscriber)    
+   - thermal centrifuge    
+   - chimical bath    
    - blast furnace (coal, coke, electric)      
    - explosion chamber   
-   - chimical reactor
-   - oil liquid (mapgened liquid)
-   - oil processing
-   - liquid pump
-   - Nuclear reactor (cooled with fluid)
-   - ITER tokamac (fusion reactor)
+   - chimical reactor  
+   - oil liquid (mapgened liquid)    
+   - oil processing    
+   - liquid pump    
+   - Nuclear reactor (cooled with fluid)    
+   - ITER tokamac (fusion reactor)    
    - ...
-   - PowerSuite (jetpack, ultra armor etc)
-   - quarry (node+liquid)
-   - tools (drill, laserminer, portable pump)   
+   - PowerSuite (jetpack, ultra armor etc)    
+   - quarry (node+liquid)    
+   - tools (drill, laserminer, portable pump)    
    
-from OC : (intermediat job)
----------
-	- robot
+from OC : (intermediat job)     
+---------    
+	- robot    
    
 Like I think my mods, no one machine need mesecon or pipeworks (or other)  
