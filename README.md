@@ -45,7 +45,7 @@ from GT5u : (medium job)
    - centrifuge    
    - circuit printer (inscriber)    
    - thermal centrifuge    
-   - chimical bath    
+   - chemical bath    
    - blast furnace (coal, coke, electric)      
    - explosion chamber   
    - chemical reactor  
