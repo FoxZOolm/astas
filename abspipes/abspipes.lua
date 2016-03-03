@@ -22,21 +22,23 @@ end
 	msg   <--- msg
 	path  <--- list of node who receive message
 	queue <--- list of node who wait message
+	cbend <--- callback at end
 --]]-----------------------
 
 --[[- pipe event handler --
-on_check_pipe=function(pos_org,pos_dest)
+on_check=function(pos_org,pos_dest)
 set_faces=function(pos,faces)
 on_activation=function(pos,hnd,data)
 active.init=function(pos,hnd,data)
 on_propagate(pos,from,message)
+on_propagate_finished(pos,message)
 --]]-----------------------
 
 
 --- pipes handler --- callback if overrided
 function pipes.on_construct(pos)
 	local node=core.get_node(pos)
-	local pipe_org=pipes.names[node.name]
+	local pipe_org=pipes.names[node.name]	
 	local meta_org=core.get_meta(pos)
 	local faces_org=0
 	meta_org:set_int("pipe:faces",0)
@@ -45,7 +47,7 @@ function pipes.on_construct(pos)
 		local node=core.get_node(vpos)
 		local pipe=pipes.names[node.name]
 		if pipe then -- for pipe
-			if pipe_org.on_check_pipe(pos,vpos) or pipe.on_check_pipe(vpos,pos) then
+			if pipe_org.on_check(pos,vpos) or pipe.on_check(vpos,pos) then
 				local meta_dest=core.get_meta(vpos)
 				local faces_dest=meta_dest:get_int("pipe:faces")
 				local dir=pipes.pos2dir(vpos,pos)
@@ -56,6 +58,7 @@ function pipes.on_construct(pos)
 			end
 		end
 	end
+	
 	pipe_org.set_faces(pos,faces_org)
 	meta_org:set_int("pipe:faces",faces_org)
 	if pipe_org.active then
@@ -88,24 +91,30 @@ function pipes.on_destruct(pos1)
 		meta:set_int("pipe:faces",faces)
 	end
 end
--------------------------------
+
 
 --- Pipes public function ---
-function pipes:add(n,v) -- add your own pipe (instead register_node)
-	self.names[n]=v.pipe
-	--- set default ---
+function pipes:register(n,v) -- register your own pipe (do register_node after)
+	self.names[n]=v.pipe	
 	if not v.on_construct then
 		v.on_construct=pipes.on_construct
 	end
 	if not v.on_destruct then
 		v.on_destruct=pipes.on_destruct
 	end
-        if not v.on_check_pipes then
-            v.on_check_pipes=pipes.on_check_pipes
-        end
-        if not v.on_propagate then
-            v.on_propagate=pipes.on_propagate
-        end
+	if not v.pipe.on_check then
+		v.pipe.on_check=pipes.on_check
+	end
+	if not v.pipe.on_propagate then
+		v.pipe.on_propagate=pipes.on_propagate
+	end
+	if not v.pipe.set_faces then
+		v.pipe.set_faces=pipes.set_faces
+	end	
+end
+
+function pipes:add(n,v) -- add your own pipe (instead register_node)
+	pipes:register(n,v)
 	minetest.register_node(n,v)
 end
 
@@ -135,27 +144,32 @@ function pipes.get_gates(pos,from) -- return list of node pointed by faces excep
 end
 
 --- Pipes default Handler --- (dont need to callback)
-
-function pipes.on_check.pipes(pos_org,pos_dest)
-    return pipes.helper.compatible_pipe:is(pos_org,pos_dest)
+function pipes.on_check(pos_org,pos_dest)
+    return pipes.helper.compatible_pipes:is(pos_org,pos_dest)
 end
 
-function pipes.on_propagate=function (pos,from,msg)
+function pipes.on_propagate(pos,from,msg)
     local gates=pipes.get_gates(pos,from)
     for a,b in pairs(gates) do
         pipes.propagate:push(pos,b,msg)
     end
 end
 
------------------------------
-
+function pipes.set_faces(pos,faces)            
+	local n=pipes.prepare_swap(pos,faces)
+	core.log("abspipes:pipes.set_faces: (".. dbg(pos)..") " .. n)
+	core.swap_node(pos,{name=n})
+	return true
+end
 --- Pipes propagate public function ---
-function pipes.propagate:new(from,pos,mesg) -- make a new message
+function pipes.propagate:new(pos,mesg) -- make a new message
 	self.msgid=self.msgid+1
 	local id=self.msgid
 	local hash=core.hash_node_position(pos)
-	local msg={id=id,org=from,msg=mesg,path={},queue={}}
-	msg.queue[hash]=from
+	local msg={id=id,org=pos,msg=mesg,path={},queue={}}
+	local node=core.get_node(pos)
+	msg.cbend=pipes.names[node.name].on_propagate_finished
+	msg.queue[hash]=pos
 	self.msg[id]=msg
 end
 
@@ -170,7 +184,7 @@ function pipes.propagate:push(from,pos,msg) -- push msg to other (neighbore)
 	msg.queue[hash]=from
 	return true
 end
----------------------------------------
+
 
 --- Pipes GLOBAL ---
 minetest.register_globalstep(function(delta) -- background propagate message loop
@@ -194,7 +208,11 @@ minetest.register_globalstep(function(delta) -- background propagate message loo
 			b.queue[c]=nil -- table.delete ?
 		end
 		if nb==0 then
-			b[a]=nil -- destroy msg
+			if b.cbend then
+				b.cbend(b.org,b)
+			end			
+			pipes.propagate.msg[a]=nil -- destroy msg
+			b=nil
 		end
 		if maxloop==0 then
 			break
@@ -222,7 +240,6 @@ minetest.register_globalstep(function(delta) -- background activation loop
 		end
 	end
 end)
---------------------
 
 
 --- modders helper ---
@@ -284,45 +301,13 @@ function pipes.helper.compatible_pipes:is(pos1,pos2)
 	return self[compatible] or false	
 end
 
-function pipes.helper.prepare_swap(pos,faces,extra) -- return new node name#faces_extra
+function pipes.prepare_swap(pos,faces,extra) 
 	local name=core.get_node(pos).name	
-	local rawname=string.split(name,"#")[1]
+	local rawname=string.split(name,"_")[1]
 	if not extra then 
 		extra=""
 	else
 		extra="_" .. extra
 	end
-	return rawname .. "#" .. faces .. extra
+	return rawname .. "_" .. faces .. extra
 end
-----------------------
-
-
--- test --
-
-pipes:add("astas:stuff", {
-	description = "stuff",
-	tiles = {"bones_top.png","bones_bottom.png","bones_side.png","bones_side.png","bones_rear.png",	"bones_front.png"	},
-	paramtype2 = "facedir",
-	groups = {dig_immediate=2},
-	on_punch=function (pos)
-		local msg="mymessage" -- can be {..dafkuw..}
-		pipes.propagate:new(pos,pos,msg) -- push message to global loop
-	end,
-	pipe={
-		class="abspipes:test", -- modname:<your pipe type name>
-		active={
-			timer=10,
-			init=function(pos,hnd,data)
-			end
-		},
-		on_activation=function(pos,hnd,data)
-		-- core.emerge_area(pos, pos) if u want touch it
-		end,
-		set_faces=function(pos,faces)
-			core.log("abspipes:pipe.set_faces:"..dbg(pos).." faces:"..faces)
-			local n=pipes.prepare_swap(pos,faces)
-			-- core.swap_node(pos,n)
-			return true
-		end,
-	},
-})

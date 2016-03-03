@@ -14,18 +14,18 @@ AbsPipes :
  - logical connection [finished]
  - propagation [finished]   
  - activation [finished]        
- - emerge node on propagation [untested]
+ - emerge node on propagation [finished]
  - helper [partiel]    
  - wrapper (pipeworks interface) [if asked]
 
      
 from AE2 : (huge job)    
 ----------   
-  - ME Cable [WIP]
-  - ME Controler  (crafting terminal inclued)     
-  - ME Driver     
-  - ME Drive (items, liquids, nrj)    
-  - ME Interface   
+  - ME Cable [WIP-50%]
+  - ME Controler  (crafting terminal inclued) [WIP-10%]     
+  - ME Driver [on fire]    
+  - ME Drive (items, liquids, nrj) [on fire]   
+  - ME Interface [if asked]  
   - ME Molecular assembler (aka autocrafter)   
   - ME LuaControler (like ligth OC)   
   - ...   
@@ -66,4 +66,8 @@ from OC : (intermediat job)
 Like I think my mods, no one machine need mesecon or pipeworks (or other)  
 
 Changelog :
-2016/03/01-21:47 pipes .on_check_pipe, .on_propagate & .set_faces default handler    
+2016/03/01-21:47	abspipes	add default handler to .on_check, .on_propagate & .set_faces     
+2016/03/02-21:37	abspipes	rename .on_check_pipe to on_check
+					abspipes	add pipes:register (without register_node)
+					aeme		wip mecable, mecontroller
+					abspipes	add on_propagate_finished
