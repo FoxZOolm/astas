@@ -161,6 +161,7 @@ function pipes.set_faces(pos,faces)
 	core.swap_node(pos,{name=n})
 	return true
 end
+
 --- Pipes propagate public function ---
 function pipes.propagate:new(pos,mesg) -- make a new message
 	self.msgid=self.msgid+1
@@ -183,6 +184,16 @@ function pipes.propagate:push(from,pos,msg) -- push msg to other (neighbore)
 	end
 	msg.queue[hash]=from
 	return true
+end
+
+function pipes.propagate:kill(message)
+	local pos=message.org
+	self.msg[message.id].queue=nil
+	local cb=message.cbend
+	if cb then 
+		cb(message)
+	end	
+	self.msg[message.id]=nil
 end
 
 
