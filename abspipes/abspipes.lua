@@ -1,10 +1,3 @@
-pipes={
-	names={},
-	faces={[1]={x=-1,y=0,z=0},[2]={x=1,y=0,z=0},[4]={x=0,y=-1,z=0},[8]={x=0,y=1,z=0},[16]={x=0,y=0,z=1},[32]={x=0,y=0,z=-1}},
-	propagate={msgid=0,msg={}},
-	actives={}
-}
-
 local function dbg(v)
 	return "x=".. v.x .." y=".. v.y .." Z=".. v.z
 end
@@ -16,18 +9,77 @@ end
 	pipe  <--- pipe event handler
 --]]-------------------
 
---[[- message structure --- (dont touch it)
-	id    <--- id of message
-	org   <--- pos of node org
-	msg   <--- msg
-	path  <--- list of node who receive message
-	queue <--- list of node who wait message
-	cbend <--- callback at end
---]]-----------------------
+
+--- Message Class ---
+cmessages=class({list={}})
+function cmessages:newmsg(msg)  
+    local n=1
+    for i in ipairs(self.list) do 
+        if not n==i then
+            break
+        end
+        n=n+1
+    end
+    msg.id=n
+    msg._parent=self
+    self.list[n]=msg
+    return msg
+end
+
+function cmessages:kill(msg)
+	self.list[msg.id]=nill
+end
+
+
+pipes={
+	names={},
+	faces={[1]={x=-1,y=0,z=0},[2]={x=1,y=0,z=0},[4]={x=0,y=-1,z=0},[8]={x=0,y=1,z=0},[16]={x=0,y=0,z=1},[32]={x=0,y=0,z=-1}},
+	propagates=cmessages:new(),
+	actives={}
+}
+
+function pipes.propagates:post(pos,cmd) 
+	local hash=core.hash_node_position(pos)
+	local node=core.get_node(pos)
+	local msg=self:newmsg({											
+		-- id									 <--- propagations msg structure
+		-- _parent
+		org=pos, --<-- from
+		cmd=cmd, --<-- command class
+		path={}, --<-- node already checked
+		queue={}, --<-- node to check		
+		cbend=pipes.names[node.name].on_propagate_finished
+	})
+	cmd._msg=msg
+	msg.queue[hash]=pos		
+end
+
+
+ccmd=class({								   --<--- propagations cmd strucutre class
+	_msg={}, -- propagate structure
+	--cmd="dafuw",	
+})
+
+function ccmd:kill()
+	self._msg:kill()
+end
+
+function ccmd:propagate(pos,next)
+	local hash=minetest.hash_node_position(next)
+	local msg=self._msg
+	if msgs.path[hash] then
+		return false
+	end
+	if msgs.queue[hash] then
+		return false
+	end
+	msgs.queue[hash]=pos
+	return true
+end
 
 --[[- pipe event handler --
-on_check=function(pos_org,pos_dest)
-set_faces=function(pos,faces)
+on_check=function(pos_org,pos_dest) // default check compatible
+set_faces=function(pos,faces)		// default swapnode name_#faces
 on_activation=function(pos,hnd,data)
 active.init=function(pos,hnd,data)
 on_propagate(pos,from,message)
@@ -148,10 +200,10 @@ function pipes.on_check(pos_org,pos_dest)
     return pipes.helper.compatible_pipes:is(pos_org,pos_dest)
 end
 
-function pipes.on_propagate(pos,from,msg)
+function pipes.on_propagate(pos,from,cmd)
     local gates=pipes.get_gates(pos,from)
     for a,b in pairs(gates) do
-        pipes.propagate:push(pos,b,msg)
+        cmd:propagate(pos,b)
     end
 end
 
@@ -162,47 +214,11 @@ function pipes.set_faces(pos,faces)
 	return true
 end
 
---- Pipes propagate public function ---
-function pipes.propagate:new(pos,mesg) -- make a new message
-	self.msgid=self.msgid+1
-	local id=self.msgid
-	local hash=core.hash_node_position(pos)
-	local msg={id=id,org=pos,msg=mesg,path={},queue={}}
-	local node=core.get_node(pos)
-	msg.cbend=pipes.names[node.name].on_propagate_finished
-	msg.queue[hash]=pos
-	self.msg[id]=msg
-end
-
-function pipes.propagate:push(from,pos,msg) -- push msg to other (neighbore)
-	local hash=minetest.hash_node_position(pos)
-	if msg.path[hash] then
-		return false
-	end
-	if msg.queue[hash] then
-		return false
-	end
-	msg.queue[hash]=from
-	return true
-end
-
-function pipes.propagate:kill(message)
-	local pos=message.org
-	self.msg[message.id].queue=nil
-	local cb=message.cbend
-	if cb then 
-		cb(message)
-	end	
-	self.msg[message.id]=nil
-end
-
 
 --- Pipes GLOBAL ---
 minetest.register_globalstep(function(delta) -- background propagate message loop
 	local maxloop=100
-	local msgnb=0
-	for a,b in pairs(pipes.propagate.msg) do
-		msgnb=msgnb+1
+	for a,b in pairs(pipes.propagates.list) do
 		local nb=0		
 		for c,d in pairs(b.queue) do
 			local pos=core.get_position_from_hash(c)
@@ -215,28 +231,25 @@ minetest.register_globalstep(function(delta) -- background propagate message loo
 				break
 			end
 			b.path[c]=d
-			pipe.on_propagate(pos,d,b)
-			b.queue[c]=nil -- table.delete ?
+			pipe.on_propagate(pos,b.cmd)
+			b.queue[c]=nil 
 		end
 		if nb==0 then
 			if b.cbend then
-				b.cbend(b.org,b)
+				b.cbend(b.org,b.cmd)
 			end			
-			pipes.propagate.msg[a]=nil -- destroy msg
-			b=nil
+			b.cmd:kill()
 		end
 		if maxloop==0 then
 			break
 		end
 	end
-	if msgnb==0 then
-		pipes.propagate.msgid=0
-	end
 end)
 
 minetest.register_globalstep(function(delta) -- background activation loop
-	local maxloop=100
+	local maxloop=100	
 	for a in pairs(pipes.actives) do
+		core.log("abspipes actives a " .. dump(a))
 		if a.timer>0 then
 			a.delta=a.delta-delta
 			if a.delta<=0 then
@@ -290,7 +303,7 @@ function pipes.disconnect(pos1,pos2)
 	pipe.set_faces(pos2,dir)
 end
 
-function pipes.get_activation_hnd(pos)
+function pipes.actives_get_hnd(pos)
 	return pipes.actives[core.hash_node_position(pos)]
 end
 

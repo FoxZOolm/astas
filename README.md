@@ -14,8 +14,7 @@ ME Cable link node between us & make a distinct system (aka "MESystem")
 ME Storage can store large amound (million !) of items in 64 slots    
 (a slot = items of same type (wear and meta inclued))    
 /!\but lost all of items stored in if breaked/!\   
-ME Controler are the controler of a "MEsystem" :   
-u can do several operation :   
+ME Controler can do several operation :   
 - insert items thru the "MESystem" (the closer or free ME Storage)]   
 - extract items   
 - make a "autocrafting pattern"   
@@ -47,37 +46,38 @@ in fact, I don't understand these code...
 	- me cable (soon nodeboxeditor.nbe)
 	- me controler	
 	
-AbsPipes : [WIP 90%]   
+AbsPipes : [WIP]   
 ----------   
- - logical connection [finished]
- - propagation [finished]   
- - activation [WIP 90%]        
- - emerge node on propagation [finished]
+ - logical connection
+ - propagation 
+ - activation 
+ - emerge node on propagation 
  - helper [partiel]    
  - wrapper (pipeworks interface) [if asked]
      
-from AE2 (aka aeme): [WIP]
+from AE2 (aka aeme): [WIP -- in rewrite ---]
 ----------   
-  - ME Cable [WIP 99%]
-	- visual connection [finished]
+  - ME Cable 
+	- visual connection
 	- propagation [abspipes vanilla]
-  - ME Controler [Hugh WIP 1%]   
+  - ME Controler 
 	- propagation
-		- enumeration [WIP 90%]
+		- enumeration 
 	- formspec 
 		- "items storage list" (need ME Storage)
 		- "crafting pattern" (need ME Crafting Computer)
 		- "mass deposite" [on fire]
-  - ME Storage [WIP-1%] <-- need reach 99% for ALPHA
+  - ME Storage [0%] <-- need reach 99% for ALPHA
 	- propagation
-		- enumeration [WIP 99%]
-		- items push (store) [WIP 10%]
+		- enumeration 
+		- items push (store) 
 		- items pop (get) [on fire]
 		- items purge [can wait]
 		- items filter [later]
   - ME Crafting computer 		
-  - ME Molecular assembler (aka autocrafter)   <-- need reach 99% for BETA   
-  - ME Wifi base/terminal    
+  - ME Molecular assembler (aka autocrafter) [0%]   <-- need reach 99% for BETA   
+  - ME Acces Control
+  - ME Wifi base/terminal [0%] <-- need reach 99% for RC1   
   - ME LuaControler (like a light OC)   
   - ME Interface [if asked]  
   - ...   
@@ -85,15 +85,15 @@ from AE2 (aka aeme): [WIP]
          
 from GT5u : (medium job)     
 -----------     
-   - steam generator (coal, lava, hot coolant, oil)    
-   - turbine (steam, super steam)    
    - electic cable    
-   - liquid pipe     
+   - steam generator (coal, lava, hot coolant, oil)    
+   - turbine (steam, super steam)       
+   - liquid pump     
    - elecric furnace    
-   - macerator    
-   - washing machine    
+   - macerator [0%] <-- need reach 99% for RC2   
    - extractor    
-   - compressor      
+   - compressor [0%] <-- need reach 99% for Release V1       
+   - washing machine    
    - centrifuge    
    - circuit printer (inscriber)    
    - thermal centrifuge    
@@ -152,3 +152,6 @@ Changelog :
 2016/03/03	abspipes	add pipes.propagate.kill (safethread ?)
 			aeme		wip mestorage
 2016/03/04	aeme		testing mecable + mecontroler interaction (visual+enum prop msg)= OK
+2016/03/05	aeme		thinking on mestorage messaging exchange
+2016/03/06	cloop		adding light oop like to lua
+			*			rewrite all for inclued oop where is usefull/fun

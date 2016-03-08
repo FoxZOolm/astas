@@ -1,19 +1,114 @@
 dofile(minetest.get_modpath("abspipes").."/upipes.lua")
 
---- local function ---
-local function deepcopy(orig)
-    local orig_type = type(orig)
-    local copy
-    if orig_type == 'table' then
-        copy = {}
-        for orig_key, orig_value in next, orig, nil do
-            copy[deepcopy(orig_key)] = deepcopy(orig_value)
-        end
-        setmetatable(copy, deepcopy(getmetatable(orig)))
-    else -- number, string, boolean, etc
-        copy = orig
+--- class declaration ---
+
+--- class itemstack ---
+citemstack=class(dumpable,{name="",wear=0.0,meta="",count=0})
+
+function citemstack:hash()
+  return string.format("%s#%s#%s",self.name,self.wear,self.meta)
+end
+
+function citemstack:add(a)
+  self.count=self.count+a
+end
+
+function citemstack:sub(a)
+  local v=self.count
+  v=v-a
+  if v<0 then
+    self.count=0
+    return v
+  end
+  self.count=v
+  return 0
+end
+
+function citemstack:eq(a)
+  return self:hash()==a:hash()
+end
+
+--- class citemstacks ---
+citemstacks=class(dumpable,{list={},slot=0,sum=0,maxslot=64,maxsum=10000})
+function citemstacks:store(is)
+    if is.count<1 then
+        return is.count
     end
-    return copy
+    if self.slot>=self.maxslot then
+        return is.count
+    end
+    if self.sum>=self.maxsum then
+        return is.count
+    end
+
+    local h=is:hash()
+    local l=self.list[h]   
+    local r=self.maxsum-self.sum
+
+    if r<=is.count then
+        local t=r
+        r=is.count-r
+        is.count=t
+    else
+        r=0
+    end
+
+    if not l then
+        self.list[h]=dp(is)
+        self.slot=self.slot+1
+    else
+        self[h].count=self[h].count+is.count        
+    end
+
+    self.sum=self.sum+is.count
+    is.count=r
+
+    return r
+end
+
+
+function citemstacks:ask(is)
+    if is.ask<1 then
+        return is.ask
+    end
+    local h=is:hash()
+    local l=self.list[h]
+    if not l then
+        return is.ask
+    end
+    
+    local r=l.count-is.ask
+    if r<=0 then        
+        r=is.ask-math.abs(r)                
+        self.list[h]=nil
+        self.slot=self.slot-1        
+    else        
+        r=is.ask
+        l.count=l.count - is.ask        
+    end
+    is.ask=is.ask-r
+    is.count=is.count+r    
+    self.sum=self.sum-r
+end
+
+cmsgsem=class({list={}})
+
+function cmsgsem:newmsg(sem,msg)
+    if self:is(sem) then 
+      return nil
+    end
+    local msg=cmessage:new()
+    msg._semaphore={id=sem,_parent=self}
+    self.list[sem]=msg
+    return msg
+end
+
+function cmsgsem:is(sem)
+  return self.list[sem]
+end
+
+function cmsgsem:kill(sem)
+	self.list[sem]=nil
 end
 
 --- ME CABLE ---
@@ -27,11 +122,11 @@ local me_cables={
     groups = {dig_immediate=2,not_in_creative_inventory=1},
     pipe={
 		class="aeme:mecable",
-		on_propagate=function(pos,from,message)
-			if message.msg.cmd==mecontroler.enum.cmd then
-				message.msg.enum.cables=message.msg.enum.cables+1
+		on_propagate=function(pos,from,cmd)
+			if cmd.cmd==mecontroler.enum.cmd then
+				cmd.enum.cables=cmd.enum.cables+1
 			end
-			pipes.on_propagate(pos,from,message)
+			pipes.on_propagate(pos,from,cmd)
 		end
 	}
 }
@@ -41,7 +136,7 @@ core.log("aeme:init")
 for a,b in pairs(upipes) do
     local r={}
 	if a==0 then 
-		r=deepcopy(me_cables)
+		r=dpc(me_cables)
 		r.groups.not_in_creative_inventory=nil
 	else
 		r=me_cables
@@ -56,31 +151,20 @@ end
 -- Controler message ---
 mecontroler={
 	enum={
-		cmd="aeme:enum", -- msg={cmd="aeme:enum"...
-		data={}
-	}, -- callback "aeme:mec_enum"	
+		cmd="aeme:enum", 
+		semaphore=cmsgsem:new()
+	}
 }
 
-function mecontroler.enum:new(pos)
-	local h=minetest.hash_node_position(pos)
-	if self.data[h] then
-		return false
+function mecontroler.semaphore:post(pos,msg,player)
+	local hash=core.hash_node_position(pos)
+	local m=self:is(hash)
+	if not m then
+		m=self:newsem(hash,msg)
+		m._semaphore.player={}
+		pipes.propagates.post(msg)
 	end
-	self.data[h]={mec=0,cables=0,nb=0,freestorage=0}
-	return self.data[h]
-end
-
-function mecontroler.enum:this(pos) -- helper
-	local h=minetest.hash_node_position(pos)
-	if self.data[h] then
-		return false
-	end	
-	return self.data[h]
-end
-
-function mecontroler.enum:kill(pos)
-	local h=minetest.hash_node_position(pos)
-	self.data[h]=nil
+	table.insert(m._semaphore.players,player)	
 end
 
 local function dbgchat(p,m)
@@ -93,25 +177,16 @@ pipes:add("aeme:mecontroler",{
 	groups = {dig_immediate=2},
     tiles = {"bones_top.png","bones_bottom.png","bones_side.png","bones_side.png","bones_rear.png","bones_front.png"},
     paramtype = "light",
-	on_punch=function(pos, node, player, pointed_thing)
-		local e=mecontroler.enum:new(pos)		
-		if e then 
-			e.player=player:get_player_name()
-			pipes.propagate:new(pos,{cmd=mecontroler.enum.cmd,enum=e})
-		--else
-			-- mecontrole.enum:this(pos).player
-		end	
-		--- test --- // absorb player items wielded & push storage msg
-		local pwis=payer:get_wielded_item()
-		local msg={msg=mestorage.items.cmd_push,pwis.to_table()} -- add from={from="player|me...",data=playerentity|data=pos}
-		pwis:set_count(0)
-		------------
+	on_punch=function(pos, node, player, pointed_thing)		
+		local cmd=ccmd:new()
+		cmd.cmd=mecontroler.enum.cmd
+		cmd.enum={mec=0, cables=0}
+		mecontroler.semaphore:post(pos,cmd,player)
 	end,
 
 	pipe={
 		class="aeme:mecable",
 		set_faces=function(pos,faces)
-			core.log("aeme:mec set_faces")
 			return true
 		end,	
 		on_propagate=function(pos,from,message)
@@ -127,13 +202,7 @@ pipes:add("aeme:mecontroler",{
 				for a,b in pairs(msg.enum.items) do
 					dbgchat(msg.enum.player ,string.format("%s x%d",b.name,b.count))
 				end
-				mecontroler.enum:kill(pos)
 				return
-			end
-			if msg.cmd==mestorage.items.push then
-				if msg.itemstack.count >0 then
-					dbgchat(msg.enum.player,"no space found") -- todo: retrieve items					
-				end
 			end
 		end
 	}
@@ -141,29 +210,7 @@ pipes:add("aeme:mecontroler",{
 
 
 --- ME STORAGE ---
-mestorage={
-	max_slot=63, -- like AE2 org
-	inv={},
-	item_push={
-		cmd="aeme:mesia"
-	}
-}
-
-function mestorage.inv:get(pos)
-	local meta=core.get_meta(pos)
-	local si=meta:get_string("aeme:mesinv")
-	if not si then
-		si={}
-	else
-		si=core.deserialize("return {".. si .."}") -- decompress ?
-	end
-	return si
-end
-
-function mestorage.inv:set(pos,inv)
-	local meta=core.get_meta(pos)
-	meta:get_string("aeme:mesinv",core.serialize(inv)) -- compress ?
-end
+mestorage={}
 
 pipes:add("aeme:mestorage_items",{
     description = "ME Storage (items)",
@@ -176,39 +223,8 @@ pipes:add("aeme:mestorage_items",{
 		set_faces=function(pos,faces)
 			return true
 		end,	
-		on_propagate=function(pos,from,message)			
-			local meta=core.get_meta(pos)			
-			if message.msg.cmd==mecontroler.enum.cmd then
-				local si=mestorage.inv:get(pos)
-				local es=message.msg.enum.items
-				message.msg.enum.freespace=mestorage.max_slot-63
-				for a,b in pairs(si) do
-					local h=string.format("%s#%s#%d",b.name,b.meta,b.wear)
-					if es[h] then
-						es[h].count=es[h].count+b.count
-					else
-						es[h]={count=b.count}
-					end
-				end
-			elseif message.msg.cmd==mestorage.item.cmd_push then
-				local is=message.msg.itemstack
-				local si=mestorage.inv:get(pos)
-				local h=string.format("%s#%s#%d",ist.name,ist.meta,ist.wear)
-				if si[h] then
-					si[n].count=si[n].count+is:get_count()
-					message.msg.items.count=0
-					pipes.propagate:kill(message)				
-					return
-				end
-				if #si<mestorage.max_items then
-					si[h]=ist
-					message.msg.items.count=0
-					pipes.propagate:kill(message)
-					return
-				end			
-			end			
-			pipes.on_propagate(pos,from,message)
-		end,
+		on_propagate=function(pos,from,cmd)			
+		end
 	}
 })
 
