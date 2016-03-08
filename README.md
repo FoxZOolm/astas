@@ -15,7 +15,7 @@ ME Storage can store large amound (million !) of items in 64 slots
 (a slot = items of same type (wear and meta inclued))    
 /!\but lost all of items stored in if breaked/!\   
 ME Controler can do several operation :   
-- insert items thru the "MESystem" (the closer or free ME Storage)]   
+- insert items 
 - extract items   
 - make a "autocrafting pattern"   
 - autocrafting items (need ME crafting computer)   
@@ -31,6 +31,7 @@ ME "Crafting Machine" (ME Furnace, ME Grinder etc) are enumerated into "autocraf
 something like this : send "1 iron ingot" into "grinder" to obtain "1 iron powder"  
 ME Crafting computer following this rules and can cascade pattern   
 ("cascade pattern"= when 1 craft need a other craft)   
+"pattern" don't need to remake each time is used at all
 
 <troll mode="bashing">   
 Why I haven't use greatest Pipeworks, digiline or technic MT mods ?   
@@ -46,31 +47,31 @@ in fact, I don't understand these code...
 	- me cable (soon nodeboxeditor.nbe)
 	- me controler	
 	
-AbsPipes : [WIP]   
+AbsPipes : [80%]   
 ----------   
- - logical connection
- - propagation 
- - activation 
- - emerge node on propagation 
+ - logical connection [finished]
+ - propagation [80%]
+ - activation [wip oop]
+ - emerge node on propagation [finished]
  - helper [partiel]    
  - wrapper (pipeworks interface) [if asked]
      
 from AE2 (aka aeme): [WIP -- in rewrite ---]
 ----------   
-  - ME Cable 
-	- visual connection
+  - ME Cable [80%]
+	- visual connection [finished]
 	- propagation [abspipes vanilla]
-  - ME Controler 
-	- propagation
-		- enumeration 
+  - ME Controler [wip oop]
+	- propagation [wip 10%]
+		- enumeration [wip 1%]
 	- formspec 
 		- "items storage list" (need ME Storage)
 		- "crafting pattern" (need ME Crafting Computer)
 		- "mass deposite" [on fire]
   - ME Storage [0%] <-- need reach 99% for ALPHA
 	- propagation
-		- enumeration 
-		- items push (store) 
+		- enumeration [1%]
+		- items push (store) [oop]
 		- items pop (get) [on fire]
 		- items purge [can wait]
 		- items filter [later]
@@ -85,7 +86,6 @@ from AE2 (aka aeme): [WIP -- in rewrite ---]
          
 from GT5u : (medium job)     
 -----------     
-   - electic cable    
    - steam generator (coal, lava, hot coolant, oil)    
    - turbine (steam, super steam)       
    - liquid pump     
@@ -122,24 +122,19 @@ GT5u : (soon)
 
 
 #--- LICENCES ---   
-(A) RULEZ (no gov usage)        
+(A) RULEZ (no GOV usage, include EDU)        
 CC BY SA NC   
 
-(C)SJFN@ by foxz at free.fr
+(C)SJFN@ by foxz at free. fr
 
 you can only use this mod in a "gratuit" server   
-with donation but without pay-to-win (all form inclued voting gift)      
+(or free-donation server)
+no pay-to-win (all form inclued voting gift)      
 you can only speak about this mod on a "spam"-free webpage    
 (or a discret 1/8 screen "spam", < 1Ko, no sound, non scam, non X, non gov)    
 
-I don't make money with...   
-dont make money with too...   
-or share it with your "user" or why not ? with me...    
-(but I cost a lot)    
-
-if u follow this rules, dont ask me...
-but I'm always happy to receive a email (or PM)...
-
+I'm always happy to receive a email (or PM)...
+but if u follow this rules, dont ask me...
 except millions dollars : no exception.. don't ask !   
 ----------------   
    
@@ -155,3 +150,5 @@ Changelog :
 2016/03/05	aeme		thinking on mestorage messaging exchange
 2016/03/06	cloop		adding light oop like to lua
 			*			rewrite all for inclued oop where is usefull/fun
+2016/03/07	abspipes	wip oop
+			aeme		wip opp mecontroler, mestorage			
