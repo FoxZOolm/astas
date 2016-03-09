@@ -21,8 +21,8 @@ function _class.__newindex(t,k,v)
   end
 end
 
-function _class:new()
-  local i=dpc(self.vars)  
+function _class:new(v)
+  local i=dpc(self.vars,v)  
   setmetatable(i,{__index=self.funcs})
   return i
 end
@@ -52,8 +52,10 @@ function class(a,b,c,d,e) -- replace with function class(...)
 end
 
 --- plugin ---
-function dpc(a)
-  local c={}
+function dpc(a,c)
+  if not c then
+	 c={}
+  end	 
   setmetatable(c,getmetatable(a))
   for k,v in pairs(a) do
     if type(v)=="table" then

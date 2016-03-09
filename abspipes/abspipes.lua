@@ -202,7 +202,7 @@ end
 
 function pipes.on_propagate(pos,from,cmd)
     local gates=pipes.get_gates(pos,from)
-    for a,b in pairs(gates) do
+    for _,b in pairs(gates) do
         cmd:propagate(pos,b)
     end
 end

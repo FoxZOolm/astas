@@ -64,7 +64,8 @@ from AE2 (aka aeme): [WIP -- in rewrite ---]
   - ME Controler [wip oop]
 	- propagation [wip 10%]
 		- enumeration [wip 1%]
-	- formspec 
+	- formspec
+		- "main menu" [wip 1%]
 		- "items storage list" (need ME Storage)
 		- "crafting pattern" (need ME Crafting Computer)
 		- "mass deposite" [on fire]

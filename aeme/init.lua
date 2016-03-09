@@ -3,7 +3,7 @@ dofile(minetest.get_modpath("abspipes").."/upipes.lua")
 --- class declaration ---
 
 --- class itemstack ---
-citemstack=class(dumpable,{name="",wear=0.0,meta="",count=0})
+citemstack=class({name="",wear=0.0,meta="",count=0})
 
 function citemstack:hash()
   return string.format("%s#%s#%s",self.name,self.wear,self.meta)
@@ -29,7 +29,7 @@ function citemstack:eq(a)
 end
 
 --- class citemstacks ---
-citemstacks=class(dumpable,{list={},slot=0,sum=0,maxslot=64,maxsum=10000})
+citemstacks=class({list={},slot=0,sum=0,maxslot=64,maxsum=10000})
 function citemstacks:store(is)
     if is.count<1 then
         return is.count
@@ -65,7 +65,6 @@ function citemstacks:store(is)
 
     return r
 end
-
 
 function citemstacks:ask(is)
     if is.ask<1 then
@@ -131,7 +130,6 @@ local me_cables={
 	}
 }
 
-
 core.log("aeme:init")
 for a,b in pairs(upipes) do
     local r={}
@@ -146,6 +144,13 @@ for a,b in pairs(upipes) do
     pipes:add("aeme:mecable_"..a,r)
 end
 
+--- FormSpec ---
+minetest.register_on_player_receive_fields(function(player, formname, fields)	
+	if formname=="aeme:mecdep" then
+		
+	end
+end)
+
 --- ME CONTROLER ---
 
 -- Controler message ---
@@ -156,15 +161,19 @@ mecontroler={
 	}
 }
 
-function mecontroler.semaphore:post(pos,msg,player)
+function mecontroler.enum.semaphore:post(pos,msg,player)
 	local hash=core.hash_node_position(pos)
 	local m=self:is(hash)
+	local r=true
 	if not m then
 		m=self:newsem(hash,msg)
-		m._semaphore.player={}
+		m._semaphore.players={}
 		pipes.propagates.post(msg)
+	else
+		r=false
 	end
 	table.insert(m._semaphore.players,player)	
+	return r
 end
 
 local function dbgchat(p,m)
@@ -177,32 +186,38 @@ pipes:add("aeme:mecontroler",{
 	groups = {dig_immediate=2},
     tiles = {"bones_top.png","bones_bottom.png","bones_side.png","bones_side.png","bones_rear.png","bones_front.png"},
     paramtype = "light",
-	on_punch=function(pos, node, player, pointed_thing)		
-		local cmd=ccmd:new()
-		cmd.cmd=mecontroler.enum.cmd
-		cmd.enum={mec=0, cables=0}
-		mecontroler.semaphore:post(pos,cmd,player)
+	on_punch=function(pos, node, player, pointed_thing)
+		local meta=core.get_meta(pos)
+		local hash=core.hash_node_position(pos)
+		--hash="test"
+		minetest.create_detached_inventory("cdi"..hash,{})
+		local inv=minetest.get_inventory({type="detached",name="cdi"..hash})
+		inv:set_size("main",64)
+		core.show_formspec(player:get_player_name(),"aeme:mecdep",string.format("size[8,9]list[detached:cdi%s;main;0,0;8,4;]button[0,4;8,1;deposite;deposite]list[current_player;main;0,5;8,4;]",hash))
 	end,
-
+	on_receive_fields = function(pos, formname, fields, sender)
+		throw()
+	end,
 	pipe={
 		class="aeme:mecable",
 		set_faces=function(pos,faces)
 			return true
 		end,	
-		on_propagate=function(pos,from,message)
-			if message.msg.cmd==mecontroler.enum.cmd then
-				message.msg.enum.mec=message.msg.enum.mec+1
+		on_propagate=function(pos,from,cmd)
+			if cmd.cmd==mecontroler.enum.cmd then
+				cmd.enum.mec=cmd.enum.mec+1
 			end
-			pipes.on_propagate(pos,from,message)
+			pipes.on_propagate(pos,from,cmd)
 		end,
-		on_propagate_finished=function(pos,message)			
-			local msg=message.msg	
-			if msg.cmd==mecontroler.enum.cmd then				
-				dbgchat(msg.enum.player ,string.format("#mec:%d #cables:%d",msg.enum.mec,msg.enum.cables))
-				for a,b in pairs(msg.enum.items) do
-					dbgchat(msg.enum.player ,string.format("%s x%d",b.name,b.count))
+		on_propagate_finished=function(pos,cmd)						
+			if cmd.cmd==mecontroler.enum.cmd then				
+				for _,p in cmd.enum.players do
+					dbgchat(p ,string.format("#mec:%d #cables:%d",cmd.enum.mec,cmd.enum.cables))
+					for _,b in pairs(msg.enum.items) do
+						dbgchat(p ,string.format("%s x%d",b.name,b.count))
+					end
+					return
 				end
-				return
 			end
 		end
 	}
@@ -210,7 +225,12 @@ pipes:add("aeme:mecontroler",{
 
 
 --- ME STORAGE ---
-mestorage={}
+mestorage={
+	items={
+		push={cmd="aeme:mespush"},
+		pop ={cmd="aeme:mespop"}
+	}
+}
 
 pipes:add("aeme:mestorage_items",{
     description = "ME Storage (items)",
@@ -223,7 +243,29 @@ pipes:add("aeme:mestorage_items",{
 		set_faces=function(pos,faces)
 			return true
 		end,	
-		on_propagate=function(pos,from,cmd)			
+		on_propagate=function(pos,from,cmd)	
+			local node=core.get_node(pos)
+			local meta=core.get_meta(pos)
+			if cmd.cmd==mecontroler.enum.cmd then			
+				local mesis=core.deserialize("return {" .. meta:get_string("aeme:mesis") .."}")
+				local is=citemstacks:new(mesis)
+				for _,v in pairs(is.list) do 
+					cmd.enum.items:add(v)
+				end
+			elseif cmd.cmd==mestorage.items.push.cmd then
+				local mesis=core.deserialize("return {" .. meta:get_string("aeme:mesis") .."}")
+				local is=citemstacks:new(mesis)
+				is:add(cmd.itemstack)
+				mesis=core.serialize(is.list)
+				meta:set_string("aeme:mesis",mesis)
+			elseif cmd.cmd==mestorage.items.pop.cmd then
+				local mesis=core.deserialize("return {" .. meta:get_string("aeme:mesis") .."}")
+				local is=citemstacks:new(mesis)
+				is:sub(cmd.itemstack) -- itemstack.ask
+				mesis=core.serialize(is.list)
+				meta:set_string("aeme:mesis",mesis)
+			end
+			pipes.on_propagate(pos,from,cmd)
 		end
 	}
 })
