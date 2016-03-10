@@ -193,7 +193,12 @@ pipes:add("aeme:mecontroler",{
 		minetest.create_detached_inventory("cdi"..hash,{})
 		local inv=minetest.get_inventory({type="detached",name="cdi"..hash})
 		inv:set_size("main",64)
-		core.show_formspec(player:get_player_name(),"aeme:mecdep",string.format("size[8,9]list[detached:cdi%s;main;0,0;8,4;]button[0,4;8,1;deposite;deposite]list[current_player;main;0,5;8,4;]",hash))
+		core.show_formspec(player:get_player_name(),"aeme:mecdep",string.format(
+			"size[8,9]"..
+			"list[deta
+			"list[detached:cdi%s;main;0,0;8,4;]"..
+			"button[0,4;8,1;deposite;deposite]"..
+			"list[current_player;main;0,5;8,4;]",hash))
 	end,
 	on_receive_fields = function(pos, formname, fields, sender)
 		throw()
