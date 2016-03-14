@@ -147,7 +147,7 @@ end
 --- FormSpec ---
 minetest.register_on_player_receive_fields(function(player, formname, fields)	
 	if formname=="aeme:mecdep" then
-		
+		minetest.log(dump(fields))
 	end
 end)
 
@@ -172,12 +172,50 @@ function mecontroler.enum.semaphore:post(pos,msg,player)
 	else
 		r=false
 	end
-	table.insert(m._semaphore.players,player)	
+	local alr=false
+	for _,b in ipairs(m._semaphore.players) do
+		if b==player then
+			alr=true
+			break
+		end
+	end
+	if not alr then
+		table.insert(m._semaphore.players,player)	
+	end
 	return r
 end
 
 local function dbgchat(p,m)
 	minetest.chat_send_player(p,m)
+end
+
+local function mecmkfs(pos,player,items,machines,rech)
+	local hash=core.hash_node_position(pos)
+	local name="cdi"..hash
+	minetest.create_detached_inventory(name,{})
+	local inv=minetest.get_inventory({type="detached",name=name})
+	inv:set_size("main",8)
+	inv:set_size("show",1)
+
+	local itemslist="test1,test2,test3"
+
+local b=	"size[11.25,10]"..
+			"field[0,0;0,0;id;$detinv;$detinv]"..
+			"field[0.28,0.2;6.1,1.5;rech;recherche;]"..
+			"button_exit[6,0.01;2,1.1;ok;refresh]"..
+			"textlist[0,1;8,3;lis;$itemslist;1]"..			
+			--"list[detached:%pattern%;main;8.25,1;3,3;]"..
+			--"list[detached:%pattern_result%;main;8.25,5;3,1;]"..
+			--"dropdown[8.25,4.1;3,2;test;%machine%,extractor;1]"..
+			"list[detached:$detinv;main;0,4;5,1;]"..
+			"list[detached:$detinv;show;6,4;1,1;]"..
+			"button_exit[8,4;1,1;ext;ext]"..
+			"button[0,5;8,1;deposite;Inventory]"..			
+			"list[current_player;main;0,6;8,4;]"		
+	
+	b=b:gsub("$detinv",name):gsub("$itemslist",itemslist)
+	core.show_formspec(player,"aeme:mec",b)
+		
 end
 
 core.log("aeme:register_node aeme:mecontroler")
@@ -187,22 +225,10 @@ pipes:add("aeme:mecontroler",{
     tiles = {"bones_top.png","bones_bottom.png","bones_side.png","bones_side.png","bones_rear.png","bones_front.png"},
     paramtype = "light",
 	on_punch=function(pos, node, player, pointed_thing)
-		local meta=core.get_meta(pos)
-		local hash=core.hash_node_position(pos)
-		--hash="test"
-		minetest.create_detached_inventory("cdi"..hash,{})
-		local inv=minetest.get_inventory({type="detached",name="cdi"..hash})
-		inv:set_size("main",64)
-		core.show_formspec(player:get_player_name(),"aeme:mecdep",string.format(
-			"size[8,9]"..
-			"list[deta
-			"list[detached:cdi%s;main;0,0;8,4;]"..
-			"button[0,4;8,1;deposite;deposite]"..
-			"list[current_player;main;0,5;8,4;]",hash))
+		local cmd=ccmd:new({cmd=mecontroler.enum.cmd,mec=0,pipes=0,items=citemstacks:new({max_slot=-1,max_item=-1})})
+		mecontroler.enum.semaphore.post(pos,cmd,payer:get_player_name())
 	end,
-	on_receive_fields = function(pos, formname, fields, sender)
-		throw()
-	end,
+	
 	pipe={
 		class="aeme:mecable",
 		set_faces=function(pos,faces)
@@ -217,11 +243,7 @@ pipes:add("aeme:mecontroler",{
 		on_propagate_finished=function(pos,cmd)						
 			if cmd.cmd==mecontroler.enum.cmd then				
 				for _,p in cmd.enum.players do
-					dbgchat(p ,string.format("#mec:%d #cables:%d",cmd.enum.mec,cmd.enum.cables))
-					for _,b in pairs(msg.enum.items) do
-						dbgchat(p ,string.format("%s x%d",b.name,b.count))
-					end
-					return
+		--			mecmkfs(pos,p,cmd.enum.items)
 				end
 			end
 		end
