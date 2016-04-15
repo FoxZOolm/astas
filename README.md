@@ -139,17 +139,4 @@ but if u follow this rules, dont ask me...
 except millions dollars : no exception.. don't ask !   
 ----------------   
    
-Changelog :
-2016/03/01	abspipes	add default handler to .on_check_pipe, .on_propagate & .set_faces     
-2016/03/02	abspipes	rename .on_check_pipe to on_check
-			abspipes	add pipes:register (without register_node)
-			aeme		wip mecable, mecontroller
-			abspipes	add on_propagate_finished
-2016/03/03	abspipes	add pipes.propagate.kill (safethread ?)
-			aeme		wip mestorage
-2016/03/04	aeme		testing mecable + mecontroler interaction (visual+enum prop msg)= OK
-2016/03/05	aeme		thinking on mestorage messaging exchange
-2016/03/06	cloop		adding light oop like to lua
-			*			rewrite all for inclued oop where is usefull/fun
-2016/03/07	abspipes	wip oop
-			aeme		wip opp mecontroler, mestorage			
+	
