@@ -28,27 +28,27 @@ function _class:new(v)
 end
 
 function class(a,b,c,d,e) -- replace with function class(...)
-  local arg={[1]=a,[2]=b,[3]=c,[4]=d,[5]=e} -- delete this line
-  local cc={funcs={},vars={}}
-  setmetatable(cc,_class)
+	local arg={[1]=a,[2]=b,[3]=c,[4]=d,[5]=e} -- delete this line
+	local cc={funcs={},vars={}}
+	setmetatable(cc,_class)
 	if not arg then
 		return cc
 	end
-  for _,a in ipairs(arg) do
-    local typ=getmetatable(a)
-    if not typ then
-        for k,v in pairs(a) do 
-            cc[k]=v
-        end
-    elseif typ.type=="class" then
-        for k,v in pairs(a) do 
-            for kk,vv in pairs(v) do
-                cc[k][kk]=vv
-            end
-        end
-    end
-  end
-  return cc
+	for _,a in ipairs(arg) do
+		local typ=getmetatable(a)
+		if not typ then
+			for k,v in pairs(a) do 
+				cc[k]=v
+			end
+		elseif typ.type=="class" then
+			for k,v in pairs(a) do 
+				for kk,vv in pairs(v) do
+					cc[k][kk]=vv
+				end
+			end
+		end
+	end
+	return cc
 end
 
 --- plugin ---
@@ -106,7 +106,7 @@ end
 --- exemple ---
 ------------
 -- myclass=class(otherclass1,otherclass2,{
---		... dafwu...
+--		... dafuw...
 -- })
 -- function myclass:foo()... end
 --
